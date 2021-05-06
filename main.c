@@ -18,8 +18,8 @@ uint MICROSTEP = 32; // 1 or 4 or 8
 const uint STEPS_PER_ROTATION = 200;
 //const double BELT_RATIO = 100/7;    // TODO diameter hub / diameter stepper
 
-const float RPM_MIN = 300;
-const float RPM_MAX = 0.1;
+const float RPM_MAX = 300;
+const float RPM_MIN = 0.1;
 
 #define BUILTIN_LED_PIN 25
 const uint OUTPUT_PIN = 15;
@@ -76,7 +76,7 @@ void core1_entry()
     // input
         memset(buf, 0, sizeof buf); arg = 0;
         scanf("%s %f", buf, &arg);
-        if (!strcmp(buf, "set")) { printf("sending %f\n", arg); multicore_fifo_push_blocking(arg); }
+        if (!strcmp(buf, "set")) multicore_fifo_push_blocking(arg);
 
     // status communication
         if (multicore_fifo_rvalid())
@@ -84,6 +84,8 @@ void core1_entry()
         if (comm_state == CORECOM_FLASH) {
             gpio_put(BUILTIN_LED_PIN, 0);
             sleep_ms(FLASH_PERIOD);
+        } else {
+            printf("\n");
         }
         gpio_put(BUILTIN_LED_PIN, 1);
         sleep_ms(FLASH_PERIOD);
@@ -113,7 +115,7 @@ int main() {
 // state vars
     float sine_amplitude = 0; // rpm
     float sine_frequency = 1; // rpm
-    float target_rpm = 0.1;
+    float target_rpm = 5;                                         // INITIAL RPM
     float cur_rpm = target_rpm;
 
     uint prev_timestamp = elapsed();
@@ -125,6 +127,7 @@ int main() {
 		    float g = multicore_fifo_pop_blocking();
 
 			if (g < 1) { // control signal
+                printf("\n\n\n\nGOT CONTROL SIGNAL...\n\n\n\n");
 				switch ((int)g) {
 					// TODO: implement sine flags
 				case -1: to_update = &target_rpm; break;
@@ -141,16 +144,20 @@ int main() {
 			float delta = log(cur_rpm+1) * (elapsed()-prev_timestamp)/100;
 			if (fabs(target_rpm-cur_rpm) < delta) {
 				cur_rpm = target_rpm;
-				multicore_fifo_push_blocking(CORECOM_SOLID);
+				//multicore_fifo_push_blocking(CORECOM_SOLID);
 			} else {
 				if (target_rpm > cur_rpm) cur_rpm += delta;
 				else                      cur_rpm -= delta;
 			}
+            //printf("enter set rpm                                               \r");
 			set_rpm(pio, sm, cur_rpm);
-            sleep_ms(calc_delay_time(cur_rpm)+prev_timestamp-elapsed()-1);
-	    }
+            //printf("                        exit set rpm                        \r");
+	    } else {
+            printf("target rpm reached\n");
+        }
 
 	    // TODO: implement sine handling
         prev_timestamp = elapsed(); // NOTE: could improve using absolute_time_t delayed_by_ms() 
+        //sleep_ms(calc_delay_time(cur_rpm)+prev_timestamp-elapsed()-1);
     }
 }
