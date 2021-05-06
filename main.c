@@ -60,8 +60,9 @@ double set_rpm(const PIO pio, const uint sm, const double rpm)
     if (ans < bitbang0_upkeep_instruction_count) return -1; // too fast, not possible
     if (ans > 1e6) return -1;                               // too slow, disallow IMPROVE: change condition
     const double reached = (double)30/((unsigned)ans)*CLOCK_FREQ/MICROSTEP/DRIVE_FACTOR;
-    printf(" %uipt %.2lftps %.2lfrpm)\r", (unsigned)ans, CLOCK_FREQ/(unsigned)ans/2, reached);
+    printf(" (%uipt %.2lftps %.2lfrpm)\r", (unsigned)ans, CLOCK_FREQ/(unsigned)ans/2, reached);
     //printf("set %.2lftps %.2lfrpm\r", CLOCK_FREQ/(unsigned)ans/2, reached);
+    //if (pio_sm_is_tx_fifo_full(pio, sm)) printf("\n\n\nFIFO FULL!\n\n\n");
     pio_sm_put_blocking(pio, sm, (unsigned)ans-bitbang0_upkeep_instruction_count);
     return reached;
 }
@@ -71,6 +72,7 @@ void core1_entry()
     char buf[64];
     float arg;
     int comm_state = CORECOM_SOLID;
+    for (int i=1; i<=100; ++i) printf("\n");
 // main loop
     while (1) {
     // input
@@ -116,7 +118,9 @@ int main() {
     float sine_amplitude = 0; // rpm
     float sine_frequency = 1; // rpm
     float target_rpm = 5;                                         // INITIAL RPM
-    float cur_rpm = target_rpm;
+    float interp_rpm = target_rpm;
+    float actual_rpm = 0;     // true rpm of the physical device due to PIO timing limitations
+    bool  stablized = true;
 
     uint prev_timestamp = elapsed();
 
@@ -127,7 +131,7 @@ int main() {
 		    float g = multicore_fifo_pop_blocking();
 
 			if (g < 1) { // control signal
-                printf("\n\n\n\nGOT CONTROL SIGNAL...\n\n\n\n");
+                printf("\n\n\n\nGOT CONTROL SIGNAL...\nTODO NOT IMPLEMENTED\n\n\n\n");
 				switch ((int)g) {
 					// TODO: implement sine flags
 				case -1: to_update = &target_rpm; break;
@@ -137,27 +141,28 @@ int main() {
 				to_update = &target_rpm;
 			}
 			*to_update = g;
+            stablized = false;
 			multicore_fifo_push_blocking(CORECOM_FLASH);
 	    }
 
-	    if (cur_rpm != target_rpm) {
-			float delta = log(cur_rpm+1) * (elapsed()-prev_timestamp)/100;
-			if (fabs(target_rpm-cur_rpm) < delta) {
-				cur_rpm = target_rpm;
-				//multicore_fifo_push_blocking(CORECOM_SOLID);
+	    if (!stablized) {
+			float delta = sqrt(interp_rpm) * (elapsed()-prev_timestamp)/1000;
+            //printf("interpolating..    cur %6.3f   target %6.3f   delta %6.3f\n", interp_rpm, target_rpm, delta);
+			if (fabs(target_rpm-interp_rpm) < delta) {
+                printf("Best target approximation reached");
+                stablized = true;
+				interp_rpm = target_rpm;
+                multicore_fifo_push_blocking(CORECOM_SOLID);
 			} else {
-				if (target_rpm > cur_rpm) cur_rpm += delta;
-				else                      cur_rpm -= delta;
+				if (target_rpm > interp_rpm) interp_rpm += delta;
+				else                         interp_rpm -= delta;
+                printf("Interpolating to %.3f rpm", target_rpm);
 			}
-            //printf("enter set rpm                                               \r");
-			set_rpm(pio, sm, cur_rpm);
-            //printf("                        exit set rpm                        \r");
-	    } else {
-            printf("target rpm reached\n");
-        }
+			actual_rpm = set_rpm(pio, sm, interp_rpm);
+	    }
 
 	    // TODO: implement sine handling
         prev_timestamp = elapsed(); // NOTE: could improve using absolute_time_t delayed_by_ms() 
-        //sleep_ms(calc_delay_time(cur_rpm)+prev_timestamp-elapsed()-1);
+        sleep_ms(calc_delay_time(interp_rpm)+prev_timestamp-elapsed()+1);
     }
 }
