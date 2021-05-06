@@ -11,18 +11,15 @@
 #include "hardware/clocks.h"
 #include "main.pio.h"
 
-//uint MICROSTEP = 1; // 1 or 4 or 8
-//const uint STEPS_PER_ROTATION = 1;
-const double BELT_RATIO = 1;
 uint MICROSTEP = 32; // 1 or 4 or 8
 const uint STEPS_PER_ROTATION = 200;
-//const double BELT_RATIO = 100/7;    // TODO diameter hub / diameter stepper
+const double BELT_RATIO = 100/7;        // TODO check value: diameter hub / diameter stepper
 
 const float RPM_MAX = 300;
 const float RPM_MIN = 0.1;
 
-#define BUILTIN_LED_PIN 25
-const uint OUTPUT_PIN = 15;
+#define BUILTIN_LED_PIN 25      // IMPROVE: there is a default provided define for this number
+const uint OUTPUT_PIN = 28;     // 7th pin from the top right
 
 const uint FLASH_PERIOD = 1e2;  // ms
 const int CORECOM_FLASH = 1;    // IMPROVE: enums are for nerds
@@ -77,7 +74,7 @@ void core1_entry()
     while (1) {
     // input
         memset(buf, 0, sizeof buf); arg = 0;
-        scanf("%s %f", buf, &arg);
+        scanf("%s %f", buf, &arg);  // IMPROVEMENT: async scanf so that the blinking actually works
         if (!strcmp(buf, "set")) multicore_fifo_push_blocking(arg);
 
     // status communication
@@ -96,7 +93,7 @@ void core1_entry()
 
 int main() {
 // metadata
-    bi_decl(bi_program_description("Sine Blink"));
+    bi_decl(bi_program_description("The Wavetable Project Async Turntable Controller"));
     bi_decl(bi_1pin_with_name(BUILTIN_LED_PIN, "On-board LED"));
 
 // hardware setup
