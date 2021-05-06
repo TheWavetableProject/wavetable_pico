@@ -18,8 +18,8 @@ uint MICROSTEP = 32; // 1 or 4 or 8
 const uint STEPS_PER_ROTATION = 200;
 //const double BELT_RATIO = 100/7;    // TODO diameter hub / diameter stepper
 
-const float MAX_RPM = 300;
-const float MIN_RPM = 0.1;
+const float RPM_MIN = 300;
+const float RPM_MAX = 0.1;
 
 #define BUILTIN_LED_PIN 25
 const uint OUTPUT_PIN = 15;
