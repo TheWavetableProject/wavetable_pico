@@ -13,6 +13,7 @@
 
 uint MICROSTEP = 32; // 1 or 4 or 8
 const uint STEPS_PER_ROTATION = 200;
+//const double BELT_RATIO = 1; 
 const double BELT_RATIO = 100/7;        // TODO check value: diameter hub / diameter stepper
 
 const float RPM_MAX = 300;
@@ -130,6 +131,7 @@ int main() {
 			if (g < 1) { // control signal
                 printf("\n\n\n\nGOT CONTROL SIGNAL...\nTODO NOT IMPLEMENTED\n\n\n\n");
 				switch ((int)g) {
+                    // TODO: cannot do fractional RPMs??
 					// TODO: implement sine flags
 				case -1: to_update = &target_rpm; break;
 				}
@@ -143,7 +145,7 @@ int main() {
 	    }
 
 	    if (!stablized) {
-			float delta = sqrt(interp_rpm) * (elapsed()-prev_timestamp)/1000;
+			float delta = log(1+interp_rpm) * (elapsed()-prev_timestamp)/1000;
             //printf("interpolating..    cur %6.3f   target %6.3f   delta %6.3f\n", interp_rpm, target_rpm, delta);
 			if (fabs(target_rpm-interp_rpm) < delta) {
                 printf("Best target approximation reached");

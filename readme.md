@@ -48,8 +48,6 @@ The Pico's onboard LED will flash when processing a command and stay solid when 
 
 ### MacOS
 
-Make sure to clone the [pico-sdk](https://github.com/raspberrypi/pico-sdk) into the parent folder of this one.
-
 Then, install things until building works. You probably want
 ```
 brew install --cask gcc-arm-embedded
@@ -66,7 +64,9 @@ Or `raspberry-pico-sdk-git` apparently.
 
 ## Build
 
-Just `make`, then load the `.uf2` from the `build` directory using one of the above Setup methods.
+Clone recursively, or make sure to `git submodule update --init` in both this folder and in `pico-sdk`.
+
+Then, just `make`, then load the `.uf2` from the `build` directory using one of the above Setup methods.
 
 ## Debug pico
 Unplug, hold BOOTSEL, replug, release BOOTSEL. Then, `sudo picotool info -a`.
