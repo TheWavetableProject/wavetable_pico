@@ -11,10 +11,10 @@
 #include "hardware/clocks.h"
 #include "main.pio.h"
 
-uint MICROSTEP = 32; // 1 or 4 or 8
+uint MICROSTEP = 32; // microstep determined by dip switches. 1, 2, 3 all UP means 32
 const uint STEPS_PER_ROTATION = 200;
 //const double BELT_RATIO = 1; 
-const double BELT_RATIO = 100/7;        // TODO check value: diameter hub / diameter stepper
+const double BELT_RATIO = 7./100.;        // TODO check value: diameter hub / diameter stepper
 
 const float RPM_MAX = 300;
 const float RPM_MIN = 0.1;
@@ -46,7 +46,7 @@ uint elapsed() {
 }
 
 double CLOCK_FREQ = -1;
-const double DRIVE_FACTOR = STEPS_PER_ROTATION*BELT_RATIO;
+const double DRIVE_FACTOR = (double)STEPS_PER_ROTATION*BELT_RATIO;
 double calc_delay_time(const double rpm)
 {
 	return 30/rpm / MICROSTEP/DRIVE_FACTOR;
@@ -58,9 +58,9 @@ double set_rpm(const PIO pio, const uint sm, const double rpm)
     if (ans < bitbang0_upkeep_instruction_count) return -1; // too fast, not possible
     if (ans > 1e6) return -1;                               // too slow, disallow IMPROVE: change condition
     const double reached = (double)30/((unsigned)ans)*CLOCK_FREQ/MICROSTEP/DRIVE_FACTOR;
-    printf(" (%uipt %.2lftps %.2lfrpm)\r", (unsigned)ans, CLOCK_FREQ/(unsigned)ans/2, reached);
+    printf(" (%uipt %.2lftps %.2lfrpm)                                \r", (unsigned)ans, CLOCK_FREQ/(unsigned)ans/2, reached);
     //printf("set %.2lftps %.2lfrpm\r", CLOCK_FREQ/(unsigned)ans/2, reached);
-    //if (pio_sm_is_tx_fifo_full(pio, sm)) printf("\n\n\nFIFO FULL!\n\n\n");
+    if (pio_sm_is_tx_fifo_full(pio, sm)) printf("\n\n\nFIFO FULL!\n\n\n");
     pio_sm_put_blocking(pio, sm, (unsigned)ans-bitbang0_upkeep_instruction_count);
     return reached;
 }
@@ -75,6 +75,14 @@ void core1_entry()
     while (1) {
     // input
         memset(buf, 0, sizeof buf); arg = 0;
+
+        //scanf("%s%f", buf, &arg);  // IMPROVEMENT: async scanf so that the blinking actually works
+        //printf("\n\n\ngot %f\n\n\n", arg);
+        //if (!strcmp(buf, "set")) {
+            //if (arg < 0.01) printf("Target %.3f rpm too low!\n", arg);
+            //else multicore_fifo_push_blocking(*(uint*)&arg);
+        //}
+
         scanf("%s %f", buf, &arg);  // IMPROVEMENT: async scanf so that the blinking actually works
         if (!strcmp(buf, "set")) multicore_fifo_push_blocking(arg);
 
@@ -115,7 +123,7 @@ int main() {
 // state vars
     float sine_amplitude = 0; // rpm
     float sine_frequency = 1; // rpm
-    float target_rpm = 5;                                         // INITIAL RPM
+    float target_rpm = 100;                                         // INITIAL RPM
     float interp_rpm = target_rpm;
     float actual_rpm = 0;     // true rpm of the physical device due to PIO timing limitations
     bool  stablized = true;
@@ -126,6 +134,26 @@ int main() {
 // main loop
     while (1) {
 	    if (multicore_fifo_rvalid()) {
+			//uint g = multicore_fifo_pop_blocking();
+            //float val = *(float*)&g;
+            //
+            //printf("got %u (%f)\n", g, val);
+            //
+			//if (val < 0) { // control signal
+            //    printf("\n\n\n\nGOT CONTROL SIGNAL %d...\nTODO NOT IMPLEMENTED\n\n\n\n", (int)g);
+			//    switch ((int)g) {
+            //        // TODO: cannot do fractional RPMs??
+			//        // TODO: implement sine flags
+			//    case -1: to_update = &target_rpm; break;
+			//    }
+			//    g = multicore_fifo_pop_blocking(); // IMPROVE: this should check if read is valid, and set a flag to remember the read state between iters
+            //    val = *(float*)&g;
+			//} else {    // default to updating the base RPM
+			//    to_update = &target_rpm;
+			//}
+			//*to_update = val;
+            //stablized = false;
+			//multicore_fifo_push_blocking(CORECOM_FLASH);
 		    float g = multicore_fifo_pop_blocking();
 
 			if (g < 1) { // control signal
@@ -145,7 +173,7 @@ int main() {
 	    }
 
 	    if (!stablized) {
-			float delta = log(1+interp_rpm) * (elapsed()-prev_timestamp)/1000;
+			float delta = log(1+interp_rpm) * (elapsed()-prev_timestamp)/100;
             //printf("interpolating..    cur %6.3f   target %6.3f   delta %6.3f\n", interp_rpm, target_rpm, delta);
 			if (fabs(target_rpm-interp_rpm) < delta) {
                 printf("Best target approximation reached");
@@ -162,6 +190,6 @@ int main() {
 
 	    // TODO: implement sine handling
         prev_timestamp = elapsed(); // NOTE: could improve using absolute_time_t delayed_by_ms() 
-        sleep_ms(calc_delay_time(interp_rpm)+prev_timestamp-elapsed()+1);
+        sleep_ms(fmax(calc_delay_time(interp_rpm)+prev_timestamp-elapsed()+1, 0));
     }
 }
