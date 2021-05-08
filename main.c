@@ -77,10 +77,17 @@ void core1_entry()
         memset(buf, 0, sizeof buf); arg = 0;
         scanf("%s%f", buf, &arg);  // IMPROVEMENT: async scanf so that the blinking actually works
 
-        if (!strcmp(buf, "set")) {
-            if (arg < 0.01) printf("Target %.3f rpm too low!\n", arg);
-            else if (arg > 41)   printf("Target %.3f rpm too high!\n", arg);
+        if       (!strcmp(buf, "set")) {                                            // soft set RPM
+            if (arg < 0.01)     printf("\nERR: Target %.3f rpm too low!\n",  arg);
+            else if (arg > 41)  printf("\nERR: Target %.3f rpm too high!\n", arg);
             else multicore_fifo_push_blocking(*(uint*)&arg);
+        }
+        else if (!strcmp(buf, "fset")) {                                            // force set RPM (no rampup)
+            printf("GOT FSET, YOU PROBABLY DONT WANT TO USE THIS!!!\n");
+            if (arg < 0.01)     printf("\nERR: Target %.3f rpm too low!\n",  arg);  // TODO: DRYn't
+            else if (arg > 41)  printf("\nERR: Target %.3f rpm too high!\n", arg);
+            else multicore_fifo_push_blocking(-2),                                  
+                 multicore_fifo_push_blocking(*(uint*)&arg);
         }
 
     // status communication
@@ -125,6 +132,9 @@ int main() {
     float actual_rpm = 0;       // true rpm of the physical device due to PIO timing limitations
     bool  stablized = false;    // start stablized at false so that the stepper starts before input TODO: is this wanted?
 
+    // implementation specific
+    bool is_force_set = false;
+
     uint prev_timestamp = elapsed();
 
     float* to_update = &target_rpm;
@@ -136,8 +146,9 @@ int main() {
 
             if (val < 0) { // control signal
                 printf("\n\n\n\nGOT CONTROL SIGNAL %u...\nTODO NOT IMPLEMENTED\n\n\n\n", g);
-                switch (g) {
+                switch ((int)g) {
                     // TODO: implement sine flags
+                case -2: is_force_set = true;
                 case -1: to_update = &target_rpm; break;
                 }
                 g = multicore_fifo_pop_blocking(); // IMPROVE: this should check if read is valid, and set a flag to remember the read state between iters
@@ -147,6 +158,10 @@ int main() {
             }
             *to_update = val;
             stablized = false;
+
+            // impl specific logic
+            if (is_force_set) is_force_set = false, interp_rpm = target_rpm;
+
             multicore_fifo_push_blocking(CORECOM_FLASH);
         }
 
