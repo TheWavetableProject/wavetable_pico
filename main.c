@@ -75,19 +75,24 @@ void core1_entry()
     while (1) {
     // input
         memset(buf, 0, sizeof buf); arg = 0;
-        scanf("%s%f", buf, &arg);  // IMPROVEMENT: async scanf so that the blinking actually works
+        scanf("%s", buf);  // IMPROVEMENT: async scanf so that the blinking actually works
 
         if       (!strcmp(buf, "set")) {                                            // soft set RPM
+            scanf("%f", &arg);
             if (arg < 0.01)     printf("\nERR: Target %.3f rpm too low!\n",  arg);
-            else if (arg > 41)  printf("\nERR: Target %.3f rpm too high!\n", arg);
+            else if (arg > 41)  printf("\nERR: Target %.3f rpm too high!\n", arg);  // stalls the testing stepper
             else multicore_fifo_push_blocking(*(uint*)&arg);
         }
         else if (!strcmp(buf, "fset")) {                                            // force set RPM (no rampup)
+            scanf("%f", &arg);
             printf("GOT FSET, YOU PROBABLY DONT WANT TO USE THIS!!!\n");
             if (arg < 0.01)     printf("\nERR: Target %.3f rpm too low!\n",  arg);  // TODO: DRYn't
-            else if (arg > 41)  printf("\nERR: Target %.3f rpm too high!\n", arg);
+            else if (arg > 41)  printf("\nERR: Target %.3f rpm too high!\n", arg);  // stalls the testing stepper
             else multicore_fifo_push_blocking(-2),                                  
                  multicore_fifo_push_blocking(*(uint*)&arg);
+        }
+        else if (!strcmp(buf, "info")) {                                            // print debug info
+            printf("\n\nSOFTWARE CONFIGURATION INFO:\nCode commit: <COMMIT]+      \n\nHub dia. / Stepper dia.     %f\nMicrostep                   %u\n\nCore clock speed            %f MHz\nState machine (SM) divisor  %u\nSM clock speed              %f MHz\n\n", BELT_RATIO, MICROSTEP, pio_clock_freq()/1e6, bitbang0_clock_divisor, pio_clock_freq() / 1e6 / bitbang0_clock_divisor);
         }
 
     // status communication
