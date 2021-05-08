@@ -16,8 +16,8 @@ const uint STEPS_PER_ROTATION = 200;
 //const double BELT_RATIO = 1; 
 const double BELT_RATIO = 100./7.;        // TODO check value: diameter hub / diameter stepper
 
-const float RPM_MAX = 300;
-const float RPM_MIN = 0.1;
+const float RPM_MAX = 30;       // anything above this stalled the Kysan 1124090 stepper used for testing
+const float RPM_MIN = 0.01;
 
 #define BUILTIN_LED_PIN 25      // IMPROVE: there is a default provided define for this number
 const uint OUTPUT_PIN = 28;     // 7th pin from the top right
@@ -50,30 +50,37 @@ void core1_entry()
     char buf[64];
     float arg;
     int comm_state = CORECOM_SOLID;
-    for (int i=1; i<=100; ++i) printf("\n");
 // main loop
     while (1) {
     // input
         memset(buf, 0, sizeof buf); arg = 0;
-        scanf("%s", buf);  // IMPROVEMENT: async scanf so that the blinking actually works
+        scanf("%63s", buf);  // IMPROVEMENT: async scanf so that the blinking actually works
 
-        if       (!strcmp(buf, "set")) {                                            // soft set RPM
+        if       (!strcmp(buf, "set")) {                                                // soft set RPM
             scanf("%f", &arg);
-            if (arg < 0.01)     printf("\nERR: Target %.3f rpm too low!\n",  arg);
-            else if (arg > 41)  printf("\nERR: Target %.3f rpm too high!\n", arg);  // stalls the testing stepper
+            if      (arg < RPM_MIN) printf("\nERR: Target %.3f rpm too low!\n",  arg);
+            else if (arg > RPM_MAX) printf("\nERR: Target %.3f rpm too high!\n", arg);
             else multicore_fifo_push_blocking(*(uint*)&arg);
         }
-        else if (!strcmp(buf, "fset")) {                                            // force set RPM (no rampup)
+        else if (!strcmp(buf, "fset")) {                                                // force set RPM (no rampup)
             scanf("%f", &arg);
-            printf("GOT FSET, YOU PROBABLY DONT WANT TO USE THIS!!!\n");
-            if (arg < 0.01)     printf("\nERR: Target %.3f rpm too low!\n",  arg);  // TODO: DRYn't
-            else if (arg > 41)  printf("\nERR: Target %.3f rpm too high!\n", arg);  // stalls the testing stepper
+            printf("\nFORCIBLY SETTING RPM... THIS MAY STALL YOUR MOTOR\n");
+            if      (arg < RPM_MIN) printf("\nERR: Target %.3f rpm too low!\n",  arg);
+            else if (arg > RPM_MAX) printf("\nERR: Target %.2f rpm too high!\n", arg);
             else multicore_fifo_push_blocking(-2),                                  
                  multicore_fifo_push_blocking(*(uint*)&arg);
         }
-        else if (!strcmp(buf, "info")) {                                            // print debug info
+        else if (!strcmp(buf, "info")) {                                                // print debug info
             printf("\n\nSOFTWARE CONFIGURATION INFO:\nCode commit: <COMMIT]+      \n\nHub dia. / Stepper dia.     %f\nMicrostep                   %u\n\nCore clock speed            %f MHz\nState machine (SM) divisor  %u\nSM clock speed              %f MHz\n\n", BELT_RATIO, MICROSTEP, pio_clock_freq()/1e6, bitbang0_clock_divisor, pio_clock_freq() / 1e6 / bitbang0_clock_divisor);
         }
+        else if (!strcmp(buf, "microstep")) {                                           // set microstep ratio
+            int new_mstep; scanf("%d", &new_mstep);
+            if (new_mstep < 0) printf("\nERR: Microstep ratio %d invalid!\n", new_mstep);
+            else printf("\nSuccessfully set microstep ratio to %u\n", (uint)new_mstep),
+                 MICROSTEP = (uint) new_mstep,
+                 multicore_fifo_push_blocking(~1+1);
+        }
+        else printf("\nUnrecognized command '%s'\n", buf);
 
     // status communication
         if (multicore_fifo_rvalid())
@@ -129,20 +136,22 @@ int core0_entry(PIO pio, int sm)
         if (multicore_fifo_rvalid()) {
             uint g = multicore_fifo_pop_blocking();
             float val = *(float*)&g;
+            bool is_nop = 0;    // IMPROVE: scuffed as heck
 
-            if (val < 0) { // control signal
-                printf("\n\n\n\nGOT CONTROL SIGNAL %u...\nTODO NOT IMPLEMENTED\n\n\n\n", g);
-                switch ((int)g) {
+            if (g>>31&1) { // control signal
+                switch (*(int*)&g) {
                     // TODO: implement sine flags
-                case -2: is_force_set = true;
-                case -1: to_update = &target_rpm; break;
+                case -2: is_force_set = true; to_update = &target_rpm; break;
+                case -1: to_update = &target_rpm; is_nop = 1; break;
                 }
-                g = multicore_fifo_pop_blocking(); // IMPROVE: this should check if read is valid, and set a flag to remember the read state between iters
-                val = *(float*)&g;
+                if (! is_nop) {
+                    g = multicore_fifo_pop_blocking(); // IMPROVE: this should check if read is valid, and set a flag to remember the read state between iters
+                    val = *(float*)&g;
+                }
             } else {    // default to updating the base RPM
                 to_update = &target_rpm;
             }
-            *to_update = val;
+            if (! is_nop) *to_update = val;
             stablized = false;
 
             // impl specific logic
@@ -152,7 +161,8 @@ int core0_entry(PIO pio, int sm)
         }
 
         if (!stablized) {
-            float delta = log(1+interp_rpm) * (elapsed()-prev_timestamp)/100;
+            //float delta = log(1+interp_rpm) * (elapsed()-prev_timestamp)/100; // IMPROVE: what's the best ramp function? use cosine interp?
+            float delta = fmax((float)(elapsed()-prev_timestamp)/1000, 0.001/sqrt(interp_rpm));   // a slower ramp function allows for higher max speed
             if (fabs(target_rpm-interp_rpm) < delta) {
                 printf("Best target approximation reached");
                 stablized = true;
