@@ -13,14 +13,14 @@ if (TARGET tinyusb_device)
     # rest of your project
     add_executable(my_proj
         main.pio
-        main.c
+        build/out.c
     )
 
 
     # PIO things
     # generate the header file into the source tree as it is included in the RP2040 datasheet
     pico_generate_pio_header(my_proj ${CMAKE_CURRENT_LIST_DIR}/main.pio)
-    target_sources(my_proj PRIVATE main.c)
+    target_sources(my_proj PRIVATE build/out.c)
 
     # Add pico_stdlib library which aggregates commonly used features
     target_link_libraries(my_proj pico_stdlib pico_multicore pico_time hardware_pio)
