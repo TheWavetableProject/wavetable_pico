@@ -45,26 +45,6 @@ uint elapsed() {
     return to_ms_since_boot(get_absolute_time());
 }
 
-double CLOCK_FREQ = -1;
-const double DRIVE_FACTOR = (double)STEPS_PER_ROTATION*BELT_RATIO;
-double calc_delay_time(const double rpm)
-{
-	return 30/rpm / MICROSTEP/DRIVE_FACTOR;
-}
-double set_rpm(const PIO pio, const uint sm, const double rpm)
-{
-    if (CLOCK_FREQ < 0) CLOCK_FREQ = pio_clock_freq()/bitbang0_clock_divisor;
-    double ans = calc_delay_time(rpm)*CLOCK_FREQ;
-    if (ans < bitbang0_upkeep_instruction_count
-            || CLOCK_FREQ/(unsigned)ans/2 > 6e5) return -1; // too fast, not possible
-    if (ans > 1e6) return -1;                               // too slow, disallow IMPROVE: change condition
-    const double reached = (double)30/((unsigned)ans)*CLOCK_FREQ/MICROSTEP/DRIVE_FACTOR;
-    printf(" (%uipt %.2lftps %.2lfrpm)                                  \r", (unsigned)ans, CLOCK_FREQ/(unsigned)ans/2, reached);
-    //if (pio_sm_is_tx_fifo_full(pio, sm)) printf("\n\n\nFIFO FULL! %u\n\n\n", elapsed());
-    pio_sm_put_blocking(pio, sm, (unsigned)ans-bitbang0_upkeep_instruction_count);
-    return reached;
-}
-
 void core1_entry()
 {
     char buf[64];
@@ -109,26 +89,27 @@ void core1_entry()
     }
 }
 
-int main() {
-// metadata
-    bi_decl(bi_program_description("The Wavetable Project Async Turntable Controller"));
-    bi_decl(bi_1pin_with_name(BUILTIN_LED_PIN, "On-board LED"));
-
-// hardware setup
-    stdio_init_all();
-    gpio_init(BUILTIN_LED_PIN);
-    gpio_set_dir(BUILTIN_LED_PIN, GPIO_OUT);
-    gpio_put(BUILTIN_LED_PIN, 1);
-
-// pio init
-    const PIO pio = pio0;
-    const int sm = 0;
-    const uint offset = pio_add_program(pio, &bitbang0_program);
-    bitbang0_init(pio, sm, offset, OUTPUT_PIN, 1);
-
-// multicore setup
-    multicore_launch_core1(core1_entry);
-
+double CLOCK_FREQ = -1;
+const double DRIVE_FACTOR = (double)STEPS_PER_ROTATION*BELT_RATIO;
+double calc_delay_time(const double rpm)
+{
+	return 30./rpm / MICROSTEP/DRIVE_FACTOR;
+}
+double set_rpm(const PIO pio, const uint sm, const double rpm)
+{
+    if (CLOCK_FREQ < 0) CLOCK_FREQ = (double)pio_clock_freq()/(double)bitbang0_clock_divisor;
+    double ans = calc_delay_time(rpm)*CLOCK_FREQ;
+    if (ans < bitbang0_upkeep_instruction_count
+            || CLOCK_FREQ/(unsigned)ans/2 > 6e5) return -1; // too fast, not possible
+    if (ans > 1e7/bitbang0_clock_divisor) return -1;        // too slow, disallow IMPROVE: change condition
+    const double reached = (double)30/((unsigned)ans)*CLOCK_FREQ/MICROSTEP/DRIVE_FACTOR;
+    printf(" (%uipt %.2lfHz %.2lfrpm)                                  \r", (unsigned)ans, CLOCK_FREQ/(unsigned)ans/2, reached);
+    //if (pio_sm_is_tx_fifo_full(pio, sm)) printf("\n\n\nFIFO FULL! %u\n\n\n", elapsed());
+    pio_sm_put_blocking(pio, sm, (unsigned)ans-bitbang0_upkeep_instruction_count);
+    return reached;
+}
+int core0_entry(PIO pio, int sm)
+{
 // state vars
     float sine_amplitude = 0;   // rpm
     float sine_frequency = 1;   // rpm
@@ -186,7 +167,29 @@ int main() {
         }
 
         // TODO: implement sine handling
-        sleep_ms(fmax(calc_delay_time(interp_rpm)-elapsed()+prev_timestamp-1, 0));  // TODO: fifo still full sometimes
+        sleep_ms(fmax(calc_delay_time(interp_rpm)-elapsed()+prev_timestamp-1, 0));  // TODO: fifo still full sometimes/interpolation is choppy
         prev_timestamp = elapsed(); // NOTE: could improve using absolute_time_t delayed_by_ms() 
     }
+}
+
+int main() {
+// metadata
+    bi_decl(bi_program_description("The Wavetable Project Async Turntable Controller"));
+    bi_decl(bi_1pin_with_name(BUILTIN_LED_PIN, "On-board LED"));
+
+// hardware setup
+    stdio_init_all();
+    gpio_init(BUILTIN_LED_PIN);
+    gpio_set_dir(BUILTIN_LED_PIN, GPIO_OUT);
+    gpio_put(BUILTIN_LED_PIN, 1);
+
+// pio init
+    const PIO pio = pio0;
+    const int sm = 0;
+    const uint offset = pio_add_program(pio, &bitbang0_program);
+    bitbang0_init(pio, sm, offset, OUTPUT_PIN, 1);
+
+// multicore setup
+    multicore_launch_core1(core1_entry);
+    core0_entry(pio, sm);
 }

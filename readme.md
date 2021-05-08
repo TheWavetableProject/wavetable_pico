@@ -22,6 +22,7 @@ sudo picotool load -x path/to/wavetable_main.uf2
 If on Linux, manually mount the Rasperry Pico as a drive.
 
 Copy a `.uf2` file from the `releases` folder to your Raspberry Pi Pico to get running.
+
 ### Interaction
 
 To send commands, install `minicom` (`brew`/`apt`/`AUR`).
@@ -30,13 +31,17 @@ Then, if using, Linux, run `sudo minicom -b 115200 -o -D /dev/ttyACM0`.
 
 Or, if using MacOS, run `sudo minicom -b 115200 -o -D /dev/tty.usbmodem0000000000001`.
 
+Or, if on Windows, [try using PuTTY](https://stackoverflow.com/questions/66223686/raspberry-pi-pico-usb-debbuging-on-windows).
+
 Commands can also be sent pragmatically using any serial communication program, such as the `pyserial` library.
 
 ### Available Commands
 
-| Command       | Description         |
-|---------------|---------------------|
-| `set <float>` | Set the target RPM. |
+| Command        | Description                                 |
+|----------------|---------------------------------------------|
+| `set <float>`  | Ramp up/down speed to the target RPM.       |
+| `fset <float>` | Force set the speeed without interpolation. |
+| `info`         | Print software configuration information.   |
 
 Minicom does not display what you are typing as you type it, so just type the full command and press enter.
 

@@ -3,8 +3,7 @@
 
 ; define some constants
 .define public upkeep_instruction_count 4
-/*.define public clock_divisor            1000*/
-.define public clock_divisor            10
+.define public clock_divisor            1
 
 ; python stuff from the example that "we don't have to worry about"
 /*.lang_opt python sideset_init = pico.PIO.OUT_HIGH15*/
@@ -15,13 +14,16 @@
 
 
 .wrap_target
+; read the queue
     pull noblock        side 0  ; TODO: pull until last value (skip if queue has many)
     out x, 32           side 1
 
+; turn off the pin and wait
     mov y, x            side 1
 offwait:
     jmp y-- offwait     side 1
 
+; turn on  the pin and wait
     mov y, x            side 0
 onwait:
     jmp y-- onwait      side 0
@@ -39,7 +41,7 @@ static inline float pio_clock_freq()
 static inline void bitbang0_init(
         PIO pio,                                                        // which of the two PIO instances we are using
         uint sm,                                                        // which (of four) state machine to use
-        uint offset,                                                    // where the program is loaded (in the 5 bit address space, (but TODO actually 4 bc we stole a bit for the output value?))
+        uint offset,                                                    // where the program is loaded (in the 5 bit address space, (although address space is actually only 4 bits bc we stole one for the sideset output value))
         uint pin,                                                       // the pin to wiggle
         float freq                                                      // 'frequency or baud rate' of the output, whatever that means
     ) {
@@ -49,14 +51,9 @@ static inline void bitbang0_init(
 
     pio_sm_config c = bitbang0_program_get_default_config(offset);      // get the default config??????? which we will modify
     sm_config_set_sideset_pins(&c, pin);                                // set the sideset pin. we have .side_set 1 so its only one pin, but with .side_set 3 it would set three pins
-    //sm_config_set_out_shift(&c, false, true, 32);                       // configure the out instruction
-        //                      ^^^^^                                       false for shifting MSB first
-        //                             ^^^^                                 true for autopullg MSB first
-        //                                   ^^                             autopull trheshhold, aka number of bits before the OSR register is refilled from the fifo
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);                      // HELPPPP not documented in the datasheet
 
     int cycles_per_bit = 4;                                             // can use constants declared in assembly bc they were declared with `public`
-    /*float div = clock_get_hz(clk_sys) / (freq * cycles_per_bit);        // some math to divide up the clock speed to get the correct bitrate*/
     float div = bitbang0_clock_divisor;
     sm_config_set_clkdiv(&c, div);                                      // divide the actual clock speed so the state machine ticks once every `div` core clocks
 
