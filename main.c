@@ -38,7 +38,7 @@ void print_progbar(const uint len, const double lo, const double hi, const doubl
 {
     printf("%.2lf |", lo);
     for (uint i=0; i<len; ++i) {
-        if ((double)i/len <= pos && pos <= (double)(i+1)/len)
+        if (lo+(hi-lo)*(double)i/len <= pos && pos <= lo+(hi-lo)*(double)(i+1)/len)
             printf("o");
         else if ((double)i/len <= base_pos)
             printf("-");
@@ -98,7 +98,7 @@ void core1_entry()
                  multicore_fifo_push_blocking(*(uint*)&arg);
         }
         else if (!strcmp(buf, "info")) {                                                // print debug info
-            printf("\n\nSOFTWARE CONFIGURATION INFO:\nCode commit: <COMMIT]+      \n\nHub dia. / Stepper dia.     %f\nMicrostep                   %u\n\nCore clock speed            %f MHz\nState machine (SM) divisor  %u\nSM clock speed              %f MHz\n\n", BELT_RATIO, MICROSTEP, pio_clock_freq()/1e6, bitbang0_clock_divisor, pio_clock_freq() / 1e6 / bitbang0_clock_divisor);
+            printf("\n\nSOFTWARE CONFIGURATION INFO:\nCode commit: <COMMIT]+      \n\nHub dia. / Stepper dia.     %f\nMicrostep                   %u\n\nCore clock speed            %f MHz\nState machine (SM) divisor  %u\nSM clock speed              %f MHz\n\nCurrent speed               %.3f rpm\nTarget base speed           %.3f rpm\nSine amplitude              %.3f rpm\nSine frequency              %.3f c/m\n\n", BELT_RATIO, MICROSTEP, pio_clock_freq()/1e6, bitbang0_clock_divisor, pio_clock_freq() / 1e6 / bitbang0_clock_divisor, actual_rpm, target_rpm, sine_amplitude, sine_frequency);
         }
         else printf("\nUnrecognized command '%s'\n", buf);
 
@@ -119,7 +119,6 @@ void core1_entry()
 float get_sine_amplitude(float sine_amplitude, float sine_frequency, uint operation_timestamp)
 {
     const double x_pos = (elapsed()-operation_timestamp)/1e3 /60;
-    printf("offset %.3f loc %.3f ", x_pos, x_pos * sine_frequency);
     return sine_amplitude*sin(x_pos*2.*M_PI*sine_frequency);
 }
 
@@ -200,9 +199,9 @@ int core0_entry(PIO pio, int sm)
             actual_rpm = set_rpm(pio, sm, interp_rpm);
         } else {    // stabilized
             if (sine_amplitude > 0) {   // set sine curve
-                printf("set rpm to target %.3f ", target_rpm);
+                printf("Sine %.3f +/- %.3f: ", target_rpm, sine_amplitude);
                 interp_rpm = target_rpm + get_sine_amplitude(sine_amplitude, sine_frequency, operation_timestamp);
-                printf("sinout %.3f ", interp_rpm);
+                print_progbar(10, target_rpm - sine_amplitude, target_rpm + sine_amplitude, interp_rpm, -1);
                 actual_rpm = set_rpm(pio, sm, interp_rpm);
             }
         }
