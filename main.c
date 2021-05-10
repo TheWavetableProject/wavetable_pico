@@ -26,6 +26,14 @@ const int CORECOM_FLASH = 1;    // IMPROVE: enums are for nerds
 const int CORECOM_SOLID = 2;
 const int CORECOM_ERROR = -1;
 
+// current state
+float sine_amplitude = 0;   // rpm
+float sine_frequency = 1;   // rpm
+float target_rpm = 1;                                         // INITIAL RPM
+float interp_rpm = 1;
+float actual_rpm = 0;       // true rpm of the physical device due to PIO timing limitations
+bool  stablized = false;    // start stablized at false so that the stepper starts before input TODO: is this wanted?
+
 void print_progbar(const uint len, const double lo, const double hi, const double pos, const double base_pos)
 {
     printf("%.2lf |", lo);
@@ -57,7 +65,7 @@ void core1_entry()
 
         if       (!strcmp(buf, "set")) {                                                // soft set RPM
             scanf("%f", &arg);
-            if      (arg < RPM_MIN) printf("\nERR: Target %.3f rpm too low!\n",  arg);
+            if      (arg < RPM_MIN) printf("\nERR: Target %.3f rpm too low!\n",  arg);  // TODO: consider sine-ness
             else if (arg > RPM_MAX) printf("\nERR: Target %.3f rpm too high!\n", arg);
             else multicore_fifo_push_blocking(*(uint*)&arg);
         }
@@ -78,8 +86,8 @@ void core1_entry()
         }
         else if (!strcmp(buf, "sina")) {                                                // force set RPM (no rampup)
             scanf("%f", &arg);
-            if      (arg < RPM_MIN) printf("\nERR: Target %.3f rpm too low!\n",  arg);  // TODO: not just arg
-            else if (arg > RPM_MAX) printf("\nERR: Target %.2f rpm too high!\n", arg);
+            if      (target_rpm - arg < RPM_MIN) printf("\nERR: Amplitude %.2f would lead to min %.2f rpm, which is too low!\n", arg, target_rpm-arg);
+            else if (target_rpm + arg > RPM_MAX) printf("\nERR: Amplitude %.2f would lead to max %.2f rpm, which is too high!\n", arg, target_rpm+arg);
             else multicore_fifo_push_blocking(-3),                                  
                  multicore_fifo_push_blocking(*(uint*)&arg);
         }
@@ -136,14 +144,6 @@ double set_rpm(const PIO pio, const uint sm, const double rpm)
 }
 int core0_entry(PIO pio, int sm)
 {
-// state vars
-    float sine_amplitude = 0;   // rpm
-    float sine_frequency = 1;   // rpm
-    float target_rpm = 1;                                         // INITIAL RPM
-    float interp_rpm = target_rpm;
-    float actual_rpm = 0;       // true rpm of the physical device due to PIO timing limitations
-    bool  stablized = false;    // start stablized at false so that the stepper starts before input TODO: is this wanted?
-
     // implementation specific
     bool is_force_set = false;
 
