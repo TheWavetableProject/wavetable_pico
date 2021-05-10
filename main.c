@@ -69,15 +69,15 @@ void core1_entry()
             else multicore_fifo_push_blocking(-2),                                  
                  multicore_fifo_push_blocking(*(uint*)&arg);
         }
-        else if (!strcmp(buf, "info")) {                                                // print debug info
-            printf("\n\nSOFTWARE CONFIGURATION INFO:\nCode commit: <COMMIT]+      \n\nHub dia. / Stepper dia.     %f\nMicrostep                   %u\n\nCore clock speed            %f MHz\nState machine (SM) divisor  %u\nSM clock speed              %f MHz\n\n", BELT_RATIO, MICROSTEP, pio_clock_freq()/1e6, bitbang0_clock_divisor, pio_clock_freq() / 1e6 / bitbang0_clock_divisor);
-        }
         else if (!strcmp(buf, "microstep")) {                                           // set microstep ratio
             int new_mstep; scanf("%d", &new_mstep);
             if (new_mstep < 0) printf("\nERR: Microstep ratio %d invalid!\n", new_mstep);
             else printf("\nSuccessfully set microstep ratio to %u\n", (uint)new_mstep),
                  MICROSTEP = (uint) new_mstep,
                  multicore_fifo_push_blocking(~1+1);
+        }
+        else if (!strcmp(buf, "info")) {                                                // print debug info
+            printf("\n\nSOFTWARE CONFIGURATION INFO:\nCode commit: <COMMIT]+      \n\nHub dia. / Stepper dia.     %f\nMicrostep                   %u\n\nCore clock speed            %f MHz\nState machine (SM) divisor  %u\nSM clock speed              %f MHz\n\n", BELT_RATIO, MICROSTEP, pio_clock_freq()/1e6, bitbang0_clock_divisor, pio_clock_freq() / 1e6 / bitbang0_clock_divisor);
         }
         else printf("\nUnrecognized command '%s'\n", buf);
 
@@ -93,6 +93,13 @@ void core1_entry()
         gpio_put(BUILTIN_LED_PIN, 1);
         sleep_ms(FLASH_PERIOD);
     }
+}
+
+float get_sine_amplitude(float sine_amplitude, float sine_frequency, uint operation_timestamp)
+{
+    const float x_pos = (elapsed()-operation_timestamp);
+    printf("offset %.3f loc %.3f ", x_pos, x_pos * sine_frequency);
+    return sine_amplitude*sin(x_pos*2.*M_PI*sine_frequency);
 }
 
 double CLOCK_FREQ = -1;
@@ -128,6 +135,7 @@ int core0_entry(PIO pio, int sm)
     bool is_force_set = false;
 
     uint prev_timestamp = elapsed();
+    uint operation_timestamp = elapsed();
 
     float* to_update = &target_rpm;
 // main loop
@@ -151,6 +159,7 @@ int core0_entry(PIO pio, int sm)
                 to_update = &target_rpm;
             }
             if (! is_nop) *to_update = val;
+            operation_timestamp = elapsed();
             stablized = false;
 
             // impl specific logic
@@ -159,6 +168,7 @@ int core0_entry(PIO pio, int sm)
             multicore_fifo_push_blocking(CORECOM_FLASH);
         }
 
+        // ramp to target base RPM 
         if (!stablized) {
             //float delta = log(1+interp_rpm) * (elapsed()-prev_timestamp)/100; // IMPROVE: what's the best ramp function? use cosine interp?
             float delta = fmax((float)(elapsed()-prev_timestamp)/1000, 0.0005/sqrt(sqrt(interp_rpm+1)));   // a slower ramp function allows for higher max speed
@@ -166,6 +176,7 @@ int core0_entry(PIO pio, int sm)
                 printf("Best target approximation reached");
                 stablized = true;
                 interp_rpm = target_rpm;
+                operation_timestamp = elapsed();
                 multicore_fifo_push_blocking(CORECOM_SOLID);
             } else {
                 if (target_rpm > interp_rpm) interp_rpm += delta;
@@ -173,10 +184,16 @@ int core0_entry(PIO pio, int sm)
                 printf("Interpolating to %.3f rpm", target_rpm);
             }
             actual_rpm = set_rpm(pio, sm, interp_rpm);
+        } else {    // stabilized
+            if (sine_amplitude > 0) {   // set sine curve
+                printf("set rpm to target %.3f ", target_rpm);
+                interp_rpm = target_rpm + get_sine_amplitude(sine_amplitude, sine_frequency, operation_timestamp);
+                actual_rpm = set_rpm(pio, sm, interp_rpm);
+            }
         }
 
         // TODO: implement sine handling
-        sleep_ms(fmax(calc_delay_time(interp_rpm)-elapsed()+prev_timestamp-1, 0));  // TODO: fifo still full sometimes/interpolation is choppy
+        sleep_ms(fmax(calc_delay_time(actual_rpm)-elapsed()+prev_timestamp-1, 0));  // TODO: fifo still full sometimes/interpolation is choppy
         prev_timestamp = elapsed(); // NOTE: could improve using absolute_time_t delayed_by_ms() 
     }
 }
