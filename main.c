@@ -76,6 +76,19 @@ void core1_entry()
                  MICROSTEP = (uint) new_mstep,
                  multicore_fifo_push_blocking(~1+1);
         }
+        else if (!strcmp(buf, "sina")) {                                                // force set RPM (no rampup)
+            scanf("%f", &arg);
+            if      (arg < RPM_MIN) printf("\nERR: Target %.3f rpm too low!\n",  arg);  // TODO: not just arg
+            else if (arg > RPM_MAX) printf("\nERR: Target %.2f rpm too high!\n", arg);
+            else multicore_fifo_push_blocking(-3),                                  
+                 multicore_fifo_push_blocking(*(uint*)&arg);
+        }
+        else if (!strcmp(buf, "sinf")) {                                                // force set RPM (no rampup)
+            scanf("%f", &arg);
+            if      (arg < 0) printf("\nERR: Target %.3f frequency invalid!\n",  arg);
+            else multicore_fifo_push_blocking(-4),                                  
+                 multicore_fifo_push_blocking(*(uint*)&arg);
+        }
         else if (!strcmp(buf, "info")) {                                                // print debug info
             printf("\n\nSOFTWARE CONFIGURATION INFO:\nCode commit: <COMMIT]+      \n\nHub dia. / Stepper dia.     %f\nMicrostep                   %u\n\nCore clock speed            %f MHz\nState machine (SM) divisor  %u\nSM clock speed              %f MHz\n\n", BELT_RATIO, MICROSTEP, pio_clock_freq()/1e6, bitbang0_clock_divisor, pio_clock_freq() / 1e6 / bitbang0_clock_divisor);
         }
@@ -97,7 +110,7 @@ void core1_entry()
 
 float get_sine_amplitude(float sine_amplitude, float sine_frequency, uint operation_timestamp)
 {
-    const float x_pos = (elapsed()-operation_timestamp);
+    const double x_pos = (elapsed()-operation_timestamp)/1e3 /60;
     printf("offset %.3f loc %.3f ", x_pos, x_pos * sine_frequency);
     return sine_amplitude*sin(x_pos*2.*M_PI*sine_frequency);
 }
@@ -147,9 +160,10 @@ int core0_entry(PIO pio, int sm)
 
             if (g>>31&1) { // control signal
                 switch (*(int*)&g) {
-                    // TODO: implement sine flags
-                case -2: is_force_set = true; to_update = &target_rpm; break;
                 case -1: to_update = &target_rpm; is_nop = 1; break;
+                case -2: is_force_set = true; to_update = &target_rpm; break;
+                case -3: to_update = &sine_amplitude; break;
+                case -4: to_update = &sine_frequency; break;
                 }
                 if (! is_nop) {
                     g = multicore_fifo_pop_blocking(); // IMPROVE: this should check if read is valid, and set a flag to remember the read state between iters
@@ -188,11 +202,11 @@ int core0_entry(PIO pio, int sm)
             if (sine_amplitude > 0) {   // set sine curve
                 printf("set rpm to target %.3f ", target_rpm);
                 interp_rpm = target_rpm + get_sine_amplitude(sine_amplitude, sine_frequency, operation_timestamp);
+                printf("sinout %.3f ", interp_rpm);
                 actual_rpm = set_rpm(pio, sm, interp_rpm);
             }
         }
 
-        // TODO: implement sine handling
         sleep_ms(fmax(calc_delay_time(actual_rpm)-elapsed()+prev_timestamp-1, 0));  // TODO: fifo still full sometimes/interpolation is choppy
         prev_timestamp = elapsed(); // NOTE: could improve using absolute_time_t delayed_by_ms() 
     }
