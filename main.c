@@ -13,7 +13,6 @@
 
 uint MICROSTEP = 32; // microstep determined by dip switches. 1, 2, 3 all UP means 32
 const uint STEPS_PER_ROTATION = 200;
-//const double BELT_RATIO = 1; 
 const double BELT_RATIO = 100./7.;        // TODO check value: diameter hub / diameter stepper
 
 const float RPM_MAX = 30;       // anything above this stalled the Kysan 1124090 stepper used for testing
@@ -162,7 +161,7 @@ int core0_entry(PIO pio, int sm)
 
         if (!stablized) {
             //float delta = log(1+interp_rpm) * (elapsed()-prev_timestamp)/100; // IMPROVE: what's the best ramp function? use cosine interp?
-            float delta = fmax((float)(elapsed()-prev_timestamp)/1000, 0.001/sqrt(interp_rpm));   // a slower ramp function allows for higher max speed
+            float delta = fmax((float)(elapsed()-prev_timestamp)/1000, 0.0005/sqrt(sqrt(interp_rpm+1)));   // a slower ramp function allows for higher max speed
             if (fabs(target_rpm-interp_rpm) < delta) {
                 printf("Best target approximation reached");
                 stablized = true;
@@ -184,8 +183,7 @@ int core0_entry(PIO pio, int sm)
 
 int main() {
 // metadata
-    bi_decl(bi_program_description("The Wavetable Project Async Turntable Controller"));
-    bi_decl(bi_1pin_with_name(BUILTIN_LED_PIN, "On-board LED"));
+    bi_decl(bi_program_description("The Wavetable Project Controller"));
 
 // hardware setup
     stdio_init_all();
