@@ -1,5 +1,12 @@
 # Raspberry Pico Test
 
+## TODO
+- [ ] add section about modifying code for custom stepper degrees and bearing sizes
+- [ ] add note about minicom not showing text as you type it
+- [ ] test stderr and outputting a log of speed over time for later analysis
+- [ ] test the pyserial module
+- [ ] enable pressing a button to begin the next step
+
 ## Usage
 
 ### Setup
