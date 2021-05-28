@@ -2,7 +2,7 @@
 
 ## TODO
 - [ ] add section about modifying code for custom stepper degrees and bearing sizes
-- [ ] add note about minicom not showing text as you type it
+- [x] add note about minicom not showing text as you type it
 - [ ] test stderr and outputting a log of speed over time for later analysis
 - [ ] test the pyserial module
 - [ ] enable pressing a button to begin the next step
@@ -15,7 +15,13 @@ To enter BOOTSEL mode, press and hold the `BOOTSEL` button on the front of the p
 
 Then, use either `picotool` or the manual method to install the UF2.
 
+<details><summary>
+
 #### Picotool
+
+</summary>
+
+If this section is confusing, jump down to the manual installation method below. 
 
 Install `picotool` using `apt` or from the AUR. (At time of writing, `brew` does not appear to have `picotool`) 
 
@@ -24,15 +30,23 @@ After plugging in the Raspberry Pico in BOOTSEL mode, load the binary:
 sudo picotool load -x path/to/wavetable_main.uf2
 ```
 
+</details>
+
+<details><summary>
+
 #### Manual 
+
+</summary>
 
 If on Linux, manually mount the Rasperry Pico as a drive.
 
-Copy a `.uf2` file from the `releases` folder to your Raspberry Pi Pico to get running.
+Copy a `.uf2` file from [the `releases` folder](https://github.com/Exr0nProjects/wavetable_pico/tree/main/releases) to your Raspberry Pi Pico to get running. The thumbdrive icon should disappear from your desktop and the green on-board LED should turn on.
+
+</details>
 
 ### Interaction
 
-To send commands, install `minicom` (`brew`/`apt`/`AUR`).
+To send commands, install `minicom` ([`brew` (MacOS)](https://brew.sh/)/`apt`/AUR).
 
 Then, if using, Linux, run `sudo minicom -b 115200 -o -D /dev/ttyACM0`.
 
