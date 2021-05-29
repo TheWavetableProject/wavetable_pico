@@ -29,7 +29,7 @@ const int CORECOM_ERROR = -1;
 // current state
 float sine_amplitude = 0;   // rpm
 float sine_frequency = 1;   // rpm
-float target_rpm = 1;                                         // INITIAL RPM
+float target_rpm = 2;                                         // INITIAL RPM
 float interp_rpm = 1;
 float actual_rpm = 0;       // true rpm of the physical device due to PIO timing limitations
 bool  stablized = false;    // start stablized at false so that the stepper starts before input TODO: is this wanted?

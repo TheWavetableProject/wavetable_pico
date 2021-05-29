@@ -1,6 +1,7 @@
-# Raspberry Pico Test
+# Wavetable Pico
 
 ## TODO
+- [ ] fix the rpm math (off by ~2x rn)
 - [ ] add section about modifying code for custom stepper degrees and bearing sizes
 - [x] add note about minicom not showing text as you type it
 - [ ] test stderr and outputting a log of speed over time for later analysis
@@ -10,6 +11,8 @@
 ## Usage
 
 ### Setup
+
+First, you'll have to wire up the electronics! See [the wiring guide](https://github.com/Exr0nProjects/wavetable_pico/blob/main/wiring.md).
 
 To enter BOOTSEL mode, press and hold the `BOOTSEL` button on the front of the pico board. Then, plug in the USB, and release the `BOOTSEL` button. 
 
