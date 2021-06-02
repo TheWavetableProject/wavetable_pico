@@ -28,3 +28,7 @@ If your stepper is rotating in the wrong direction, swap one of the circuit pair
 
 **Be sure to turn on microstepping on your stepper controller**, or change the constants in the code and rebuild the `.uf2`, or deal with incorrect RPM calculations. To enable microstepping on the TB6600, flip dip switches SW1 through SW3 to the up position, such that they are pointing towards the side with lettering and away from the heatsink fins.
 
+Large stepper: UP UP UP UP DOWN UP
+
+Flat stepper: UP UP UP UP DOWN DOWN
+
