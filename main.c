@@ -32,7 +32,7 @@ float sine_frequency = 1;   // rpm
 float target_rpm = 2;                                         // INITIAL RPM
 float interp_rpm = 1;
 float actual_rpm = 0;       // true rpm of the physical device due to PIO timing limitations
-bool  stablized = false;    // start stablized at false so that the stepper starts before input TODO: is this wanted?
+bool  stablized = false;    // start stablized at false so that the stepper starts before input 
 
 void print_progbar(const uint len, const double lo, const double hi, const double pos, const double base_pos)
 {
