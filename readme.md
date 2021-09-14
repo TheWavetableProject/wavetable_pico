@@ -7,6 +7,7 @@
 - [ ] test stderr and outputting a log of speed over time for later analysis
 - [ ] test the pyserial module
 - [ ] enable pressing a button to begin the next step
+- [ ] arduino toolchain
 
 ## Usage
 

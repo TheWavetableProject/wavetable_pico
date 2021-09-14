@@ -9,16 +9,19 @@ To wire up your wavetable, you'll need:
     - Power supply (DC 12V 1-2A output)
     - Raspberry Pico 
     - Solid core wire (20-24 gauge)
-    - Multimeter
+    - 40mm Fan
 - Tools
     - Saftey glasses
-    - Soldering stuff (soldering iron, solder, fume hood)
+    - Soldering equipment (soldering iron, solder, fume hood)
     - Wire stripper
     - Wire cutter
+    - Multimeter
 
 ## Wiring
 
-It's time to wire up the electronics! Connect the components as in the diagram below. See the notes below the diagram and images for more details. 
+It's time to wire up the electronics! Connect the components as in the diagram below.See the notes below the diagram and images for more details. 
+
+**If using a 40mm fan, connect the wires to the 12v power supply terminals directly.**
 
 ![Wiring diagram](https://github.com/Exr0nProjects/wavetable_pico/blob/main/materials/wiring_diagram_streamlined.png?raw=true)
 
@@ -34,7 +37,13 @@ If your stepper is rotating in the wrong direction, swap one of the circuit pair
 
 **Be sure to turn on microstepping on your stepper controller**, or change the constants in the code and rebuild the `.uf2`, or deal with incorrect RPM calculations. To enable microstepping on the TB6600, flip dip switches SW1 through SW3 to the up position, such that they are pointing towards the side with lettering and away from the heatsink fins.
 
-Large stepper: UP UP UP UP DOWN UP
+Also adjust the amerage limit. The final dip switch configuration should be: UP UP UP DOWN UP UP
 
-Flat stepper: UP UP UP UP DOWN DOWN
+![DIP Switches](https://github.com/Exr0nProjects/wavetable_pico/blob/main/materials/dip_switches.png?raw=true)
+
+## Sanity Check
+
+Even without loading any software onto your Pico, the stepper driver should be able to send power to the stepper. To check that this part of the circuit works, plug in the power supply and check that the stepper motor is harder to turn with your hand than before.
+
+If this is working, it's time to load software onto your microcontroller! See the upload instructions [here](https://github.com/Exr0nProjects/wavetable_pico#setup).
 
