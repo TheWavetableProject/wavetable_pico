@@ -41,6 +41,8 @@ If on Linux, manually mount the Rasperry Pico as a drive.
 
 Copy a `.uf2` file from [the `releases` folder](https://github.com/Exr0nProjects/wavetable_pico/tree/main/releases) to your Raspberry Pi Pico to get running. The thumbdrive icon should disappear from your desktop and the green on-board LED should turn on.
 
+If you are on MacOS and an unexpceted error occurs, just try unplugging and replugging the Pico. 
+
 </details>
 
 ### Interaction
