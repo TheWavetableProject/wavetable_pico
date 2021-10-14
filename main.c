@@ -13,7 +13,8 @@
 
 uint MICROSTEP = 32; // microstep determined by dip switches. 1, 2, 3 all UP means 32
 const uint STEPS_PER_ROTATION = 200;
-const double BELT_RATIO = 100./7.;        // TODO check value: diameter hub / diameter stepper
+//const double BELT_RATIO = 100./7.;
+const double BELT_RATIO = 2.9; 
 
 const float RPM_MAX = 30;       // anything above this stalled the Kysan 1124090 stepper used for testing
 const float RPM_MIN = 0.01;
@@ -126,8 +127,13 @@ double CLOCK_FREQ = -1;
 const double DRIVE_FACTOR = (double)STEPS_PER_ROTATION*BELT_RATIO;
 double calc_delay_time(const double rpm)
 {
-	return 30./rpm / MICROSTEP/DRIVE_FACTOR;
+	return 30./rpm / MICROSTEP/DRIVE_FACTOR;    // seconds/tick
 }
+// CLOCK_FREQ       instructions    /   second
+// 60               seconds         /   minute
+// rpm              final revs      /   minute
+// drive_factor     steps           /   final rev
+// microstep        ticks           /   step
 double set_rpm(const PIO pio, const uint sm, const double rpm)
 {
     if (CLOCK_FREQ < 0) CLOCK_FREQ = (double)pio_clock_freq()/(double)bitbang0_clock_divisor;
@@ -184,7 +190,7 @@ int core0_entry(PIO pio, int sm)
         // ramp to target base RPM 
         if (!stablized) {
             //float delta = log(1+interp_rpm) * (elapsed()-prev_timestamp)/100; // IMPROVE: what's the best ramp function? use cosine interp?
-            float delta = fmax((float)(elapsed()-prev_timestamp)/1000, 0.0005/sqrt(sqrt(interp_rpm+1)));   // a slower ramp function allows for higher max speed
+            float delta = fmax((float)(elapsed()-prev_timestamp)/1000, 0.001/sqrt(sqrt(interp_rpm+1)));   // a slower ramp function allows for higher max speed
             if (fabs(target_rpm-interp_rpm) < delta) {
                 printf("Best target approximation reached");
                 stablized = true;
