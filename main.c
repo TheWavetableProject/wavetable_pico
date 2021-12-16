@@ -14,7 +14,7 @@
 uint MICROSTEP = 32; // microstep determined by dip switches. 1, 2, 3 all UP means 32
 const uint STEPS_PER_ROTATION = 200;
 //const double BELT_RATIO = 100./7.;
-const double BELT_RATIO = 2.9; 
+const double BELT_RATIO = 2.9;
 
 const float RPM_MAX = 30;       // anything above this stalled the Kysan 1124090 stepper used for testing
 const float RPM_MIN = 0.01;
@@ -30,10 +30,11 @@ const int CORECOM_ERROR = -1;
 // current state
 float sine_amplitude = 0;   // rpm
 float sine_frequency = 1;   // rpm
+float angular_accel  = 0;   // rpm^2, 0 means use sinusoidal accl
 float target_rpm = 10;                                         // INITIAL RPM
 float interp_rpm = 1;
 float actual_rpm = 0;       // true rpm of the physical device due to PIO timing limitations
-bool  stablized = false;    // start stablized at false so that the stepper starts before input 
+bool  stablized = false;    // start stablized at false so that the stepper starts before input
 
 void print_progbar(const uint len, const double lo, const double hi, const double pos, const double base_pos)
 {
@@ -49,7 +50,7 @@ void print_progbar(const uint len, const double lo, const double hi, const doubl
     printf("| %.2lf ", hi);
 }
 
-uint elapsed() {
+uint ms_elapsed() {
     return to_ms_since_boot(get_absolute_time());
 }
 
@@ -75,27 +76,33 @@ void core1_entry()
             printf("\nFORCIBLY SETTING RPM... THIS MAY STALL YOUR MOTOR\n");
             if      (arg < RPM_MIN) printf("\nERR: Target %.3f rpm too low!\n",  arg);
             else if (arg > RPM_MAX) printf("\nERR: Target %.2f rpm too high!\n", arg);
-            else multicore_fifo_push_blocking(-2),                                  
+            else multicore_fifo_push_blocking(-2),
                  multicore_fifo_push_blocking(*(uint*)&arg);
+        }
+        else if (!strcmp(buf, "lset")) {                                                // set rpm using linear interpolation
+            scanf("%f%f", &arg, &angular_accel);    // TODO: is writing globals across threads unsafe
+            if      (arg < RPM_MIN) printf("\nERR: Target %.3f rpm too low!\n",  arg);
+            else if (arg > RPM_MAX) printf("\nERR: Target %.3f rpm too high!\n", arg);
+            else multicore_fifo_push_blocking(*(uint*)&arg);
         }
         else if (!strcmp(buf, "microstep")) {                                           // set microstep ratio
             int new_mstep; scanf("%d", &new_mstep);
             if (new_mstep < 0) printf("\nERR: Microstep ratio %d invalid!\n", new_mstep);
             else printf("\nSuccessfully set microstep ratio to %u\n", (uint)new_mstep),
-                 MICROSTEP = (uint) new_mstep,
+                 MICROSTEP = (uint) new_mstep,  // TODO: is writing globals across threads unsafe
                  multicore_fifo_push_blocking(~1+1);
         }
         else if (!strcmp(buf, "sina")) {                                                // force set RPM (no rampup)
             scanf("%f", &arg);
             if      (target_rpm - arg < RPM_MIN) printf("\nERR: Amplitude %.2f would lead to min %.2f rpm, which is too low!\n", arg, target_rpm-arg);
             else if (target_rpm + arg > RPM_MAX) printf("\nERR: Amplitude %.2f would lead to max %.2f rpm, which is too high!\n", arg, target_rpm+arg);
-            else multicore_fifo_push_blocking(-3),                                  
+            else multicore_fifo_push_blocking(-3),
                  multicore_fifo_push_blocking(*(uint*)&arg);
         }
         else if (!strcmp(buf, "sinf")) {                                                // force set RPM (no rampup)
             scanf("%f", &arg);
             if      (arg < 0) printf("\nERR: Target %.3f frequency invalid!\n",  arg);
-            else multicore_fifo_push_blocking(-4),                                  
+            else multicore_fifo_push_blocking(-4),
                  multicore_fifo_push_blocking(*(uint*)&arg);
         }
         else if (!strcmp(buf, "info")) {                                                // print debug info
@@ -119,7 +126,7 @@ void core1_entry()
 
 float get_sine_amplitude(float sine_amplitude, float sine_frequency, uint operation_timestamp)
 {
-    const double x_pos = (elapsed()-operation_timestamp)/1e3 /60;
+    const double x_pos = (ms_elapsed()-operation_timestamp)/1e3 /60;
     return sine_amplitude*sin(x_pos*2.*M_PI*sine_frequency);
 }
 
@@ -143,7 +150,7 @@ double set_rpm(const PIO pio, const uint sm, const double rpm)
     if (ans > 1e7/bitbang0_clock_divisor) return -1;        // too slow, disallow IMPROVE: change condition
     const double reached = (double)30/((unsigned)ans)*CLOCK_FREQ/MICROSTEP/DRIVE_FACTOR;
     printf(" (%uipt %.2lfHz %.2lfrpm)                                  \r", (unsigned)ans, CLOCK_FREQ/(unsigned)ans/2, reached);
-    //if (pio_sm_is_tx_fifo_full(pio, sm)) printf("\n\n\nFIFO FULL! %u\n\n\n", elapsed());
+    //if (pio_sm_is_tx_fifo_full(pio, sm)) printf("\n\n\nFIFO FULL! %u\n\n\n", ms_elapsed());
     pio_sm_put_blocking(pio, sm, (unsigned)ans-bitbang0_upkeep_instruction_count);
     return reached;
 }
@@ -152,8 +159,8 @@ int core0_entry(PIO pio, int sm)
     // implementation specific
     bool is_force_set = false;
 
-    uint prev_timestamp = elapsed();
-    uint operation_timestamp = elapsed();
+    uint prev_timestamp = ms_elapsed();
+    uint operation_timestamp = ms_elapsed();
 
     float* to_update = &target_rpm;
 // main loop
@@ -178,7 +185,7 @@ int core0_entry(PIO pio, int sm)
                 to_update = &target_rpm;
             }
             if (! is_nop) *to_update = val;
-            operation_timestamp = elapsed();
+            operation_timestamp = ms_elapsed();
             stablized = false;
 
             // impl specific logic
@@ -187,15 +194,18 @@ int core0_entry(PIO pio, int sm)
             multicore_fifo_push_blocking(CORECOM_FLASH);
         }
 
-        // ramp to target base RPM 
+        // ramp to target base RPM
         if (!stablized) {
-            //float delta = log(1+interp_rpm) * (elapsed()-prev_timestamp)/100; // IMPROVE: what's the best ramp function? use cosine interp?
-            float delta = fmax((float)(elapsed()-prev_timestamp)/1000, 0.001/sqrt(sqrt(interp_rpm+1)));   // a slower ramp function allows for higher max speed
+            //float delta = log(1+interp_rpm) * (ms_elapsed()-prev_timestamp)/100; // IMPROVE: what's the best ramp function? use cosine interp?
+            float delta = 0;
+            if (angular_accel != 0.) delta = angular_accel * (float)(ms_elapsed() - prev_timestamp) / 60. / 1000.; // constant acceleration
+            else delta = fmax((float)(ms_elapsed()-prev_timestamp)/1000, 0.001/sqrt(sqrt(interp_rpm+1)));   // a slower ramp function allows for higher max speed
             if (fabs(target_rpm-interp_rpm) < delta) {
                 printf("Best target approximation reached");
                 stablized = true;
                 interp_rpm = target_rpm;
-                operation_timestamp = elapsed();
+                angular_accel = 0.0;
+                operation_timestamp = ms_elapsed();
                 multicore_fifo_push_blocking(CORECOM_SOLID);
             } else {
                 if (target_rpm > interp_rpm) interp_rpm += delta;
@@ -212,8 +222,8 @@ int core0_entry(PIO pio, int sm)
             }
         }
 
-        sleep_ms(fmax(calc_delay_time(actual_rpm)-elapsed()+prev_timestamp-1, 0));  // TODO: fifo still full sometimes/interpolation is choppy
-        prev_timestamp = elapsed(); // NOTE: could improve using absolute_time_t delayed_by_ms() 
+        sleep_ms(fmax(calc_delay_time(actual_rpm)-ms_elapsed()+prev_timestamp-1, 0));  // TODO: fifo still full sometimes/interpolation is choppy
+        prev_timestamp = ms_elapsed(); // NOTE: could improve using absolute_time_t delayed_by_ms()
     }
 }
 

@@ -59,13 +59,14 @@ Commands can also be sent pragmatically using any serial communication program, 
 
 #### Available Commands
 
-| Command        | Description                                        |
-|----------------|----------------------------------------------------|
-| `set <float>`  | Ramp up/down speed to the target RPM.              |
-| `fset <float>` | Force set the speeed without interpolation.        |
-| `info`         | Print software configuration information.          |
-| `sina <float>` | Set the amplitude of the sine wave (0 to disable). |
-| `sinf <float>` | Set the frequency of the sine wave, in Hz.         |
+| Command                | Description                                                |
+|------------------------|------------------------------------------------------------|
+| `set <float>`  | Ramp up/down speed to the target RPM.                              |
+| `fset <float>` | Force set the speeed without interpolation.                        |
+| `lset <x> <y>` | Set speed to `x` RPM with linear interpolation at `y` RPM per min. |
+| `sina <float>` | Set the amplitude of the sine wave (0 to disable).                 |
+| `sinf <float>` | Set the frequency of the sine wave, in Hz.                         |
+| `info`         | Print software configuration information.                          |
 
 Minicom does not display what you are typing as you type it, so just type the full command and press enter.
 
