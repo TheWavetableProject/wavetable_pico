@@ -9,10 +9,10 @@ Now, you are ready to control your Wavetable! The valid commands are listed belo
 
 | Command                | Description                                                |
 |------------------------|------------------------------------------------------------|
-| `set <float>`  | Ramp up/down speed to the target RPM.                              |
-| `fset <float>` | Force set the speeed without interpolation.                        |
-| `lset <x> <y>` | Set speed to `x` RPM with linear interpolation at `y` RPM per min. |
-| `sina <float>` | Set the amplitude of the sine wave (0 to disable).                 |
-| `sinf <float>` | Set the frequency of the sine wave, in Hz.                         |
+| `set 3.2`  | Ramp up/down speed to the target RPM.                              |
+| `fset 3.2` | Force set the speeed without interpolation.                        |
+| `lset 3.2 10` | Set speed to `x` RPM with linear interpolation at `y` RPM per min. |
+| `sina 0.1` | Set the amplitude of the sine wave (0 to disable).                 |
+| `sinf 0.01` | Set the frequency of the sine wave, in Hz.                         |
 | `info`         | Print software configuration information.                          |
 
