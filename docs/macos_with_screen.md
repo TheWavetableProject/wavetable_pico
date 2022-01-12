@@ -5,7 +5,7 @@
 1. Paste in the command `screen /dev/tty.usbmodem0000000000001 115200`, ensuring there are two spaces.
 1. Press enter. There should be no text on the screen.
 
-Now, you are ready to control your Wavetable! The valid commands are listed below.
+Now, you are ready to control your Wavetable! The valid commands are listed below. To use one, just type the command, then the number(s), and press enter. **No text will appear while you are typing.** 
 
 | Command                | Description                                                |
 |------------------------|------------------------------------------------------------|
