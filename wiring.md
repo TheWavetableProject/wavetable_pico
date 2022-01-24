@@ -27,7 +27,7 @@ It's time to wire up the electronics! Connect the components as in the diagram b
 
 For example, your electronic circuit may look like this when complete. (The three wires going to the Pico are soldered on the back of the board).
 
-![Completed wiring example](https://github.com/Exr0nProjects/wavetable_pico/blob/main/materials/wobbles_wiring_no_estop.jpg?raw=true)
+![Completed wiring example](https://github.com/Exr0nProjects/wavetable_pico/blob/main/materials/wobbles_wiring_no_estop.png?raw=true)
 
 Note that you'll need to insert two wires into the PUL+ terminal or the DIR+ terminal, to tie them both high.
 
@@ -39,7 +39,7 @@ If your stepper is rotating in the wrong direction, swap one of the circuit pair
 
 Also adjust the amerage limit. The final dip switch configuration should be: UP UP UP DOWN UP UP
 
-![DIP Switches](https://github.com/Exr0nProjects/wavetable_pico/blob/main/materials/dip_switches.png?raw=true)
+![DIP Switches](https://github.com/Exr0nProjects/wavetable_pico/blob/main/materials/dip_switches.jpg?raw=true)
 
 ## Sanity Check
 
