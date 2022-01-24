@@ -27,7 +27,7 @@ It's time to wire up the electronics! Connect the components as in the diagram b
 
 For example, your electronic circuit may look like this when complete. (The three wires going to the Pico are soldered on the back of the board).
 
-![Completed wiring example](https://github.com/Exr0nProjects/wavetable_pico/blob/main/materials/wobbles_wiring_no_estop.png?raw=true)
+![Completed wiring example](https://github.com/Exr0nProjects/wavetable_pico/blob/main/materials/wobbles_wiring_no_estop.jpg?raw=true)
 
 Note that you'll need to insert two wires into the PUL+ terminal or the DIR+ terminal, to tie them both high.
 
