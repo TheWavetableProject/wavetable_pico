@@ -13,45 +13,14 @@
 
 ### Setup
 
-First, you'll have to wire up the electronics! See [the wiring guide](https://github.com/Exr0nProjects/wavetable_pico/blob/main/wiring.md).
-
-To enter BOOTSEL mode, press and hold the `BOOTSEL` button on the front of the pico board. Then, plug in the USB, and release the `BOOTSEL` button. 
-
-Then, use either `picotool` or the manual method to install the UF2.
-
-
-#### Picotool
-
-<details><summary>Loading executable using `picotool`</summary>
-If this section is confusing, jump down to the manual installation method below. 
-
-Install `picotool` using `apt` or from the AUR. (At time of writing, `brew` does not appear to have `picotool`) 
-
-After plugging in the Raspberry Pico in BOOTSEL mode, load the binary:
-```sh 
-sudo picotool load -x path/to/wavetable_main.uf2
-```
-</details>
-
-
-#### Manual 
-
-<details><summary>Loading executable manually</summary>
-If on Linux, manually mount the Rasperry Pico as a drive.
-
-Copy a `.uf2` file from [the `releases` folder](https://github.com/Exr0nProjects/wavetable_pico/tree/main/releases) to your Raspberry Pi Pico to get running. The thumbdrive icon should disappear from your desktop and the green on-board LED should turn on.
-
-If you are on MacOS and an unexpceted error occurs, just try unplugging and replugging the Pico. 
-
-</details>
+See the [setup guide](./docs/installing.md).
 
 ### Interaction
 
+If using MacOS, see the [interaction guide for MacOS](./docs/macos_with_screen.md).
+
 To send commands, install `minicom` ([`brew` (MacOS)](https://brew.sh/)/`apt`/AUR).
-
 Then, if using, Linux, run `sudo minicom -b 115200 -o -D /dev/ttyACM0`.
-
-Or, if using MacOS, run `sudo minicom -b 115200 -o -D /dev/tty.usbmodem0000000000001`.
 
 Or, if on Windows, [try using PuTTY](https://stackoverflow.com/questions/66223686/raspberry-pi-pico-usb-debbuging-on-windows).
 
