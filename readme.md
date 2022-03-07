@@ -22,7 +22,7 @@ If using MacOS, see the [interaction guide for MacOS](./docs/macos_with_screen.m
 To send commands, install `minicom` ([`brew` (MacOS)](https://brew.sh/)/`apt`/AUR).
 Then, if using, Linux, run `sudo minicom -b 115200 -o -D /dev/ttyACM0`.
 
-Or, if on Windows, [try using PuTTY](https://stackoverflow.com/questions/66223686/raspberry-pi-pico-usb-debbuging-on-windows).
+Or, if on Windows, see the [interaction guide for Windows](./docs/windows_with_PuTTY.md).
 
 Commands can also be sent pragmatically using any serial communication program, such as the `pyserial` library.
 
