@@ -1,4 +1,4 @@
-# Wiring your Wavetable
+# Wiring your Wavetable with the Raspberry Pico
 
 ## Prep
 
