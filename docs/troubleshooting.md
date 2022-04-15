@@ -13,7 +13,7 @@ Before using this guide, take the top off of your Wavetable by lifting the top a
 ## The Guide
 
 0. Is the table spinning smoothly? 
-    - Check that the bearing is spinning smoothly and not squaking. If the bearing does not feel oiled, try adding some mineral oil. 
+    - Check that the bearing is spinning smoothly and not squaking. If the bearing does not feel oiled or is sticking, try adding some mineral oil or 3-in-one oil. Make sure to spin the table a few times to work the oil into the bearing.
     - Check that the bearing is not rubbing against the bottom base. Use a whiteboard marker to mark the bottom of the bearing race, then push the bearing race into the track and rotate the bearing around. If the whiteboard marker has not been wiped off of the bottom of the bearing race, then there is bearing is not rubbing against the bottom base. 
 2. Is the fan blowing air? If not:
     - Check that the power adapter is plugged into the wall and into the female plug sticking out of the stepper driver. 
